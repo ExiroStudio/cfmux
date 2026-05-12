@@ -193,4 +193,5 @@ Cfmux is an independent open-source project and is not affiliated with or endors
 
 # License
 
-Apache License 2.0 (planned)
+This project is licensed under the Apache License 2.0.
+See the LICENSE file for details.
