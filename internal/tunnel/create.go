@@ -92,7 +92,7 @@ func Create(profile, name string, progress app.ProgressFunc) error {
 }
 
 func defaultCloudflaredDir() (string, error) {
-	home, err := os.UserHomeDir()
+	home, err := app.ResolveHome()
 	if err != nil {
 		return "", err
 	}

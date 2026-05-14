@@ -59,7 +59,7 @@ func loginCloudflare() error {
 }
 
 func importCertificate(name string) error {
-	home, err := os.UserHomeDir()
+	home, err := app.ResolveHome()
 	if err != nil {
 		return err
 	}
@@ -81,7 +81,7 @@ func verifyCertificate(name string) error {
 }
 
 func cleanupTempCertificate() error {
-	home, err := os.UserHomeDir()
+	home, err := app.ResolveHome()
 	if err != nil {
 		return err
 	}

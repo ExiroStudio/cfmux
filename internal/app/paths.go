@@ -1,12 +1,11 @@
 package app
 
 import (
-	"os"
 	"path/filepath"
 )
 
 func BaseDir() string {
-	home, err := os.UserHomeDir()
+	home, err := ResolveHome()
 	if err != nil {
 		panic(err)
 	}
