@@ -24,3 +24,23 @@ func ProfileDir(name *string) string {
 func CurrentProfileFile() string {
 	return filepath.Join(BaseDir(), "current-profile")
 }
+
+func ProfileTunnelDir(profile string) string {
+	return filepath.Join(ProfileDir(&profile), "tunnels")
+}
+
+func ProfileConfigDir(profile string) string {
+	return filepath.Join(ProfileDir(&profile), "configs")
+}
+
+func TunnelCredsPath(profile, name string) string {
+	return filepath.Join(ProfileTunnelDir(profile), name+".json")
+}
+
+func TunnelConfigPath(profile, name string) string {
+	return filepath.Join(ProfileConfigDir(profile), name+".yml")
+}
+
+func TunnelRegistryPath(profile string) string {
+	return filepath.Join(ProfileDir(&profile), "registry.json")
+}
