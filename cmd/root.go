@@ -1,7 +1,9 @@
 package cmd
 
 import (
+	"cfmux/internal/app"
 	"cfmux/internal/cloudflared"
+	"errors"
 	"fmt"
 	"os"
 
@@ -28,6 +30,13 @@ var rootCmd = &cobra.Command{
 
 func Execute() {
 	if err := rootCmd.Execute(); err != nil {
+		var exitErr *app.ExitError
+		if errors.As(err, &exitErr) {
+			if exitErr.Err != nil {
+				fmt.Fprintln(os.Stderr, "Error:", exitErr.Err)
+			}
+			os.Exit(exitErr.Code)
+		}
 		fmt.Fprintln(os.Stderr, "Error:", err)
 		os.Exit(1)
 	}
