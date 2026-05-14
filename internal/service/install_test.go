@@ -277,6 +277,52 @@ func TestInstall_RejectsBinaryInTmp(t *testing.T) {
 	}
 }
 
+func TestInstall_HappyPath_AsRoot(t *testing.T) {
+	// Root runtime is valid for intentional system-level deployments.
+	// We supply --user root explicitly to exercise the uid==0 warning path.
+	env := newInstallEnv(t, "senvada")
+	env.addTunnel("api", true)
+
+	if err := Install(env.profile, "api", InstallOpts{User: "root"}, nil); err != nil {
+		t.Fatalf("Install with --user root: %v", err)
+	}
+
+	unitPath := filepath.Join(env.systemdDir, "cfmux-senvada-api.service")
+	body, err := os.ReadFile(unitPath)
+	if err != nil {
+		t.Fatalf("unit not written: %v", err)
+	}
+	s := string(body)
+	if !strings.Contains(s, "User=root") {
+		t.Fatalf("unit missing User=root\n---\n%s", s)
+	}
+	if !strings.Contains(s, "Group=root") {
+		t.Fatalf("unit missing Group=root\n---\n%s", s)
+	}
+}
+
+func TestInstall_RootShellFallback(t *testing.T) {
+	// When invoked from a direct root shell (no SUDO_USER, no --user flag),
+	// Install should fall back to user.Current() and succeed.
+	env := newInstallEnv(t, "senvada")
+	env.addTunnel("api", true)
+
+	// Clear SUDO_USER to simulate a direct root shell (not via sudo).
+	t.Setenv("SUDO_USER", "")
+
+	// The resolved user will be the current test user (user.Current()), which
+	// is non-root in this environment. This exercises the fallback code path
+	// that would resolve to "root" when actually running as root.
+	if err := Install(env.profile, "api", InstallOpts{}, nil); err != nil {
+		t.Fatalf("Install with no SUDO_USER: %v", err)
+	}
+
+	unitPath := filepath.Join(env.systemdDir, "cfmux-senvada-api.service")
+	if _, err := os.Stat(unitPath); err != nil {
+		t.Fatalf("unit not written: %v", err)
+	}
+}
+
 func TestStatus_PropagatesExitCode(t *testing.T) {
 	t.Setenv("PATH", os.Getenv("PATH")) // keep systemctl-lookup happy on test host
 	// Skip if systemctl isn't actually available — preflight will reject.

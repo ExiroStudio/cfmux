@@ -83,23 +83,29 @@ type resolvedUser struct {
 	UID       uint32
 }
 
-// resolveInvokingUser determines the unprivileged user the service will run as.
+// resolveInvokingUser determines the user the service will run as.
 //
 // Precedence (most to least trusted):
 //  1. explicit --user flag
-//  2. SUDO_USER env var (only as a fallback — empty under su, unreliable in
-//     containers, may be wrong under nested sudo)
+//  2. SUDO_USER env var (only when euid==0, meaning sudo was used)
+//  3. user.Current() — natural fallback for direct root shell or non-root contexts
 //
-// If neither yields a value, callers running as root must error out: there
-// is no safe default.
+// Root runtime is explicitly allowed: intentional root-managed infrastructure
+// deployments (e.g. VPS system services) are valid. A warning is printed to
+// stderr when the resolved user is root so accidental root ownership is visible.
 func resolveInvokingUser(flagUser string) (*resolvedUser, error) {
 	name := strings.TrimSpace(flagUser)
-	if name == "" {
+	if name == "" && getEUID() == 0 {
 		name = strings.TrimSpace(os.Getenv("SUDO_USER"))
 	}
 	if name == "" {
-		return nil, errors.New("could not determine invoking user; pass --user <name> (SUDO_USER is empty under su / nested sudo / containers)")
+		u, err := user.Current()
+		if err != nil {
+			return nil, fmt.Errorf("user.Current: %w", err)
+		}
+		name = u.Username
 	}
+
 	if _, err := sanitizeUnitPart(name); err != nil {
 		return nil, fmt.Errorf("invalid user name: %w", err)
 	}
@@ -121,7 +127,7 @@ func resolveInvokingUser(flagUser string) (*resolvedUser, error) {
 		return nil, fmt.Errorf("parse uid for %q: %w", name, err)
 	}
 	if uid == 0 {
-		return nil, fmt.Errorf("refusing to install a service to run as root (user %q has uid 0)", name)
+		fmt.Fprintf(os.Stderr, "warning: installing service as root\n")
 	}
 
 	return &resolvedUser{

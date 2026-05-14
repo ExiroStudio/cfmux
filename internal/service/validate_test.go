@@ -95,8 +95,13 @@ func TestResolveInvokingUser_FallsBackToSudoUser(t *testing.T) {
 		t.Fatalf("user.Current: %v", err)
 	}
 	if u.Uid == "0" {
-		t.Skip("running as root — cannot test non-root user resolution")
+		t.Skip("running as root — SUDO_USER fallback only applies in sudo context")
 	}
+
+	// Simulate running as root via sudo so the SUDO_USER branch is entered.
+	origEUID := getEUID
+	getEUID = func() int { return 0 }
+	t.Cleanup(func() { getEUID = origEUID })
 
 	t.Setenv("SUDO_USER", u.Username)
 	got, err := resolveInvokingUser("")
@@ -108,16 +113,32 @@ func TestResolveInvokingUser_FallsBackToSudoUser(t *testing.T) {
 	}
 }
 
-func TestResolveInvokingUser_BothEmptyErrors(t *testing.T) {
+func TestResolveInvokingUser_FallsBackToCurrentUser(t *testing.T) {
 	t.Setenv("SUDO_USER", "")
-	if _, err := resolveInvokingUser(""); err == nil {
-		t.Fatal("resolveInvokingUser should error when both flag and SUDO_USER are empty")
+	u, err := user.Current()
+	if err != nil {
+		t.Fatalf("user.Current: %v", err)
+	}
+	got, err := resolveInvokingUser("")
+	if err != nil {
+		t.Fatalf("resolveInvokingUser should fall back to current user, got error: %v", err)
+	}
+	if got.Username != u.Username {
+		t.Fatalf("expected current user %q, got %q", u.Username, got.Username)
 	}
 }
 
-func TestResolveInvokingUser_RejectsRoot(t *testing.T) {
-	if _, err := resolveInvokingUser("root"); err == nil {
-		t.Fatal("resolveInvokingUser should refuse uid 0 even if explicitly named")
+func TestResolveInvokingUser_AllowsRoot(t *testing.T) {
+	// Root runtime is intentionally valid for VPS/system-level deployments.
+	got, err := resolveInvokingUser("root")
+	if err != nil {
+		t.Fatalf("resolveInvokingUser(root) unexpected error: %v", err)
+	}
+	if got.Username != "root" {
+		t.Fatalf("expected username root, got %q", got.Username)
+	}
+	if got.UID != 0 {
+		t.Fatalf("expected UID 0, got %d", got.UID)
 	}
 }
 
