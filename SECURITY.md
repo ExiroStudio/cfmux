@@ -6,7 +6,7 @@
 |---------|-----------|
 | v0.1.2 | ✅ |
 | v0.1.1 | ✅ |
-| v0.1.0 | ❌ |
+| v0.1.0 | ✅ |
 
 Only the latest release receives security fixes. Users are encouraged to always upgrade to the latest version.
 
